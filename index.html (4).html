@@ -1,0 +1,1097 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Math Differentiator - Calculus Derivatives</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- MathJax for rendering LaTeX math formulas -->
+    <script>
+        window.MathJax = {
+            tex: {
+                inlineMath: [['$', '$'], ['\\(', '\\)']],
+                displayMath: [['$$', '$$'], ['\\[', '\\]']]
+            },
+            svg: { fontCache: 'global' }
+        };
+    </script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
+    
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Fira+Code:wght@400;600&display=swap" rel="stylesheet">
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Outfit', 'sans-serif'],
+                        mono: ['Fira Code', 'monospace'],
+                    },
+                    colors: {
+                        brand: {
+                            blue: '#0284c7',
+                            sky: '#e0f2fe',
+                            gold: '#f59e0b',
+                            lightgold: '#fef3c7',
+                            accent: '#0369a1',
+                            bg: '#f8fafc',
+                            card: '#ffffff'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        body {
+            background-color: #f8fafc;
+            color: #0f172a;
+            overflow-x: hidden;
+        }
+
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(226, 232, 240, 0.8);
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.01);
+        }
+
+        .glass-card {
+            background: #ffffff;
+            border: 1px solid #e2e8f0;
+            transition: all 0.25s ease;
+        }
+
+        .bg-grid {
+            background-size: 32px 32px;
+            background-image: 
+                linear-gradient(to right, rgba(203, 213, 225, 0.25) 1px, transparent 1px),
+                linear-gradient(to bottom, rgba(203, 213, 225, 0.25) 1px, transparent 1px);
+        }
+
+        .option-btn {
+            position: relative;
+            transition: all 0.2s ease-in-out;
+        }
+
+        .option-correct {
+            background-color: #dcfce7 !important;
+            border-color: #22c55e !important;
+            color: #14532d !important;
+        }
+
+        .option-incorrect {
+            background-color: #fee2e2 !important;
+            border-color: #ef4444 !important;
+            color: #7f1d1d !important;
+        }
+
+        #scratchpadCanvas {
+            touch-action: none;
+            cursor: crosshair;
+        }
+    </style>
+</head>
+<body class="font-sans antialiased min-h-screen flex flex-col justify-between bg-grid relative selection:bg-amber-200 selection:text-slate-900">
+
+    <canvas id="bgParticles" class="fixed inset-0 pointer-events-none z-0 opacity-20"></canvas>
+
+    <!-- Top Navigation Header -->
+    <header class="relative z-10 glass-panel border-b border-slate-200 px-4 lg:px-8 py-3 flex items-center justify-between shadow-sm">
+        <div class="flex items-center space-x-3">
+            <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-sky-500 to-amber-500 flex items-center justify-center shadow-md text-white font-mono font-bold text-xl">
+                $\frac{d}{dx}$
+            </div>
+            <div>
+                <h1 class="text-xl font-bold tracking-tight text-slate-800 flex items-center gap-2">
+                    AI MATH <span class="text-sky-600 font-extrabold">DIFFERENTIATOR</span>
+                    <span class="text-[10px] bg-amber-100 text-amber-800 border border-amber-300 font-mono px-2 py-0.5 rounded-full font-bold">Topic 8 Assignment</span>
+                </h1>
+                <p class="text-xs text-slate-500 font-mono hidden sm:block">Personalized Adaptive Calculus Learning System • 15.0 Pts</p>
+            </div>
+        </div>
+
+        <div class="flex items-center space-x-2 sm:space-x-3">
+            <button onclick="toggleDeployModal()" class="p-2.5 rounded-lg glass-card text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 transition flex items-center space-x-2" title="Deployment Guide">
+                <i class="fa-solid fa-cloud-arrow-up text-emerald-600"></i>
+                <span class="text-xs font-mono font-bold hidden md:inline">Submission & Deploy Guide</span>
+            </button>
+
+            <button id="soundToggleBtn" onclick="toggleSound()" class="p-2.5 rounded-lg glass-card text-slate-600 hover:text-sky-600 transition" title="Toggle Sound FX">
+                <i id="soundIcon" class="fa-solid fa-volume-high"></i>
+            </button>
+
+            <button id="scratchpadToggleBtn" onclick="toggleScratchpad()" class="p-2.5 rounded-lg glass-card text-slate-600 hover:text-sky-600 transition flex items-center space-x-2" title="Toggle Scratchpad">
+                <i class="fa-solid fa-pen-ruler text-amber-500"></i>
+                <span class="text-xs font-mono font-medium hidden md:inline">Scratchpad</span>
+            </button>
+        </div>
+    </header>
+
+    <!-- MAIN APP CONTAINER -->
+    <main class="relative z-10 flex-grow container mx-auto px-4 py-6 max-w-5xl flex flex-col justify-center">
+
+        <!-- STEP 1: START/WELCOME SCREEN -->
+        <div id="startScreen" class="glass-panel rounded-2xl p-6 md:p-10 text-center max-w-2xl mx-auto space-y-8 animate-fade-in shadow-xl">
+            <div class="inline-block p-4 rounded-full bg-sky-50 border border-sky-200 text-sky-600 mb-2">
+                <i class="fa-solid fa-robot text-4xl"></i>
+            </div>
+            <div>
+                <h2 class="text-3xl md:text-4xl font-extrabold text-slate-800 tracking-tight">AI Differentiated Math Platform</h2>
+                <p class="text-slate-600 text-sm md:text-base mt-2">Personalizes Calculus Derivatives into 3 distinct learning tiers with real-time AI guidance and instant green/red evaluation.</p>
+            </div>
+
+            <!-- Quiz Rules / Stats Summary -->
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 text-left">
+                <div class="glass-card p-3 rounded-xl border-l-4 border-l-emerald-500">
+                    <span class="text-xs text-slate-500 font-mono block">Level 1: Foundation</span>
+                    <span class="text-sm font-bold text-slate-800">3 Easy Problems</span>
+                    <span class="text-[11px] text-emerald-700 block mt-0.5">1.0 Pt each • Step Hints</span>
+                </div>
+                <div class="glass-card p-3 rounded-xl border-l-4 border-l-sky-500">
+                    <span class="text-xs text-slate-500 font-mono block">Level 2: Standard</span>
+                    <span class="text-sm font-bold text-slate-800">4 Medium Problems</span>
+                    <span class="text-[11px] text-sky-700 block mt-0.5">1.5 Pts each • Standard</span>
+                </div>
+                <div class="glass-card p-3 rounded-xl border-l-4 border-l-purple-500">
+                    <span class="text-xs text-slate-500 font-mono block">Level 3: Advanced</span>
+                    <span class="text-sm font-bold text-slate-800">3 Complex Problems</span>
+                    <span class="text-[11px] text-purple-700 block mt-0.5">2.0 Pts each • Extension</span>
+                </div>
+            </div>
+
+            <!-- Optional Custom Gemini API Key Field -->
+            <div class="glass-card p-4 rounded-xl text-left space-y-2 border border-slate-200 bg-slate-50">
+                <label class="block text-xs font-mono font-bold text-slate-700 flex items-center gap-2">
+                    <i class="fa-solid fa-key text-amber-500"></i> Optional Gemini API Key (For Live Dynamic Responses)
+                </label>
+                <input type="password" id="userApiKey" placeholder="Leave empty for built-in AI Engine" class="w-full px-3 py-2 text-xs font-mono border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-sky-500 bg-white">
+                <p class="text-[10px] text-slate-500">If left blank, the platform uses intelligent pre-calibrated AI response simulation.</p>
+            </div>
+
+            <div class="pt-2">
+                <button onclick="startQuiz()" class="w-full sm:w-auto px-10 py-4 rounded-xl bg-gradient-to-r from-sky-500 to-amber-500 hover:from-sky-600 hover:to-amber-600 text-white font-bold text-lg tracking-wide shadow-lg shadow-sky-500/20 transition transform hover:-translate-y-0.5 active:translate-y-0">
+                    <i class="fa-solid fa-play mr-2"></i> Start Differentiated Quiz (25 Min)
+                </button>
+            </div>
+        </div>
+
+        <!-- STEP 2: QUIZ APPLICATION INTERFACE -->
+        <div id="quizScreen" class="hidden space-y-6">
+            <!-- Top Quiz Bar (Progress + Global Timer) -->
+            <div class="glass-panel rounded-xl p-4 flex flex-col md:flex-row items-center justify-between gap-4 shadow-md">
+                <div class="flex items-center space-x-3 w-full md:w-auto justify-between md:justify-start">
+                    <span id="questionNumBadge" class="font-mono text-xs font-bold px-3 py-1 rounded-full bg-sky-100 text-sky-800 border border-sky-300">
+                        Q 1 / 10
+                    </span>
+                    <span id="difficultyBadge" class="font-mono text-xs font-bold px-3 py-1 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300">
+                        Level 1: Foundation (1.0 Pt)
+                    </span>
+                </div>
+
+                <!-- 25-Minute Overall Countdown Timer -->
+                <div class="flex items-center space-x-4 w-full md:w-72">
+                    <i class="fa-regular fa-clock text-amber-500"></i>
+                    <div class="w-full bg-slate-200 rounded-full h-3 overflow-hidden border border-slate-300 relative">
+                        <div id="timerBar" class="bg-gradient-to-r from-sky-500 to-amber-500 h-3 rounded-full transition-all duration-1000 w-full"></div>
+                    </div>
+                    <span id="timerText" class="font-mono text-sm font-bold text-slate-700 w-16 text-right">25:00</span>
+                </div>
+            </div>
+
+            <!-- Question Navigation Grid -->
+            <div id="navGrid" class="flex flex-wrap gap-2 justify-center"></div>
+
+            <!-- Question Card -->
+            <div class="glass-panel rounded-2xl p-6 md:p-8 space-y-6 relative overflow-hidden shadow-md">
+                <div class="flex justify-between items-center border-b border-slate-200 pb-3">
+                    <div id="topicCategory" class="text-xs font-mono text-sky-700 uppercase tracking-widest font-semibold">
+                        Category: Power & Sum Rules
+                    </div>
+                    <button id="hintBtn" onclick="toggleHint()" class="text-xs font-mono px-3 py-1 bg-amber-50 text-amber-700 border border-amber-300 rounded-lg hover:bg-amber-100 transition">
+                        <i class="fa-regular fa-lightbulb mr-1"></i> Level Hint
+                    </button>
+                </div>
+
+                <!-- Hint Box (Foundation Level Support) -->
+                <div id="hintBox" class="hidden p-3 rounded-xl bg-amber-50 border border-amber-200 text-xs text-amber-900 font-mono">
+                    <i class="fa-solid fa-info-circle text-amber-600 mr-1"></i> <span id="hintText"></span>
+                </div>
+
+                <div id="questionContainer" class="text-xl md:text-2xl text-slate-800 font-medium leading-relaxed min-h-[4rem] flex items-center">
+                    Loading derivative problem...
+                </div>
+
+                <!-- Options Grid -->
+                <div id="optionsGrid" class="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2"></div>
+
+                <!-- Automatic AI Explanation Area (Appears after answer selection) -->
+                <div id="aiExplanationBox" class="hidden rounded-xl bg-sky-50/80 border border-sky-200 p-4 space-y-3 animate-fade-in">
+                    <div class="flex items-center justify-between text-sky-900 font-bold text-xs font-mono">
+                        <span class="flex items-center gap-2">
+                            <i class="fa-solid fa-wand-magic-sparkles text-sky-600"></i> AI Differentiated Explanation
+                        </span>
+                        <span id="aiStatusBadge" class="text-[10px] text-sky-600 font-normal">Generated Instantly</span>
+                    </div>
+                    <div id="aiExplanationText" class="text-xs text-slate-700 leading-relaxed font-sans">
+                        Select an option above to trigger instant AI evaluation and breakdown.
+                    </div>
+                </div>
+
+                <!-- Interactive Ask AI Tutor Assistant -->
+                <div id="aiChatContainer" class="hidden pt-2 border-t border-slate-200">
+                    <div class="text-xs font-mono font-bold text-slate-700 mb-2 flex items-center gap-2">
+                        <i class="fa-solid fa-comments text-sky-600"></i> Ask AI Tutor Follow-up Questions:
+                    </div>
+                    <div id="chatHistory" class="max-h-36 overflow-y-auto space-y-2 mb-2 p-2 bg-slate-50 rounded-lg text-xs font-mono border border-slate-200">
+                        <div class="text-slate-500 italic">Example: "Why did we multiply by 3 in step 1?"</div>
+                    </div>
+                    <div class="flex gap-2">
+                        <input type="text" id="userChatInput" placeholder="Type a question about this problem..." class="flex-grow px-3 py-2 text-xs font-mono border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-sky-500">
+                        <button onclick="sendAiChatQuery()" class="px-4 py-2 bg-sky-600 text-white rounded-lg text-xs font-mono font-bold hover:bg-sky-700 transition">
+                            Ask AI
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Bottom Control Footer -->
+            <div class="flex justify-between items-center px-2">
+                <button onclick="toggleScratchpad()" class="text-xs font-mono text-slate-600 hover:text-sky-600 transition flex items-center space-x-2">
+                    <i class="fa-solid fa-pencil text-amber-500"></i>
+                    <span>Open Calculation Scratchpad</span>
+                </button>
+
+                <div class="flex space-x-3">
+                    <button id="prevBtn" onclick="prevQuestion()" class="px-4 py-2.5 rounded-xl border border-slate-300 text-slate-700 font-semibold text-sm hover:bg-slate-100 transition">
+                        <i class="fa-solid fa-arrow-left mr-1"></i> Prev
+                    </button>
+                    <button id="nextBtn" onclick="nextQuestion()" class="px-6 py-2.5 rounded-xl bg-sky-600 text-white font-bold text-sm shadow-md hover:bg-sky-700 transition flex items-center space-x-2">
+                        <span id="nextBtnText">Next Question</span>
+                        <i class="fa-solid fa-arrow-right"></i>
+                    </button>
+                    <button id="submitQuizBtn" onclick="finishQuiz()" class="px-6 py-2.5 rounded-xl bg-amber-500 text-slate-900 font-bold text-sm shadow-md hover:bg-amber-400 transition flex items-center space-x-2">
+                        <span>Submit Assessment</span>
+                        <i class="fa-solid fa-check"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- STEP 3: RESULTS & ANALYTICS DASHBOARD -->
+        <div id="resultScreen" class="hidden space-y-8 animate-fade-in">
+            <div class="glass-panel rounded-2xl p-6 md:p-8 text-center relative overflow-hidden shadow-xl">
+                <div class="max-w-xl mx-auto space-y-4">
+                    <span id="rankBadge" class="inline-block px-4 py-1.5 rounded-full bg-amber-100 border border-amber-300 text-amber-900 font-mono text-xs uppercase tracking-widest font-bold">
+                        Calculus Expert
+                    </span>
+                    <h2 class="text-3xl md:text-4xl font-extrabold text-slate-800">Quiz Completed!</h2>
+                    <p class="text-slate-600 text-sm">Below is your differentiated performance breakdown across all 3 levels (15.0 Points Total).</p>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mt-8 items-center">
+                    <div class="glass-card p-4 rounded-xl flex flex-col justify-center items-center">
+                        <span class="text-xs font-mono text-slate-500 mb-1">TOTAL SCORE</span>
+                        <span id="finalScoreText" class="text-3xl font-extrabold text-sky-600 font-mono">0 / 15.0</span>
+                        <span class="text-xs text-slate-500 mt-1">Differentiated Weighting</span>
+                    </div>
+
+                    <div class="flex flex-col items-center justify-center">
+                        <div class="relative w-36 h-36 flex items-center justify-center">
+                            <svg class="w-full h-full transform -rotate-90" viewBox="0 0 36 36">
+                                <path stroke-dasharray="100, 100" class="text-slate-200" stroke-width="3.5" stroke="currentColor" fill="none" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+                                <path id="scoreCirclePath" stroke-dasharray="0, 100" class="text-sky-500 transition-all duration-1000 ease-out" stroke-width="3.5" stroke-linecap="round" stroke="currentColor" fill="none" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+                            </svg>
+                            <div class="absolute flex flex-col items-center justify-center">
+                                <span id="accuracyPercent" class="text-2xl font-bold font-mono text-slate-800">0%</span>
+                                <span class="text-[10px] text-slate-500 font-mono">ACCURACY</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="glass-card p-4 rounded-xl flex flex-col justify-center items-center">
+                        <span class="text-xs font-mono text-slate-500 mb-1">TIME CONSUMED</span>
+                        <span id="totalTimeText" class="text-3xl font-extrabold text-amber-500 font-mono">0:00</span>
+                        <span class="text-xs text-slate-500 mt-1">Out of 25:00 limit</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Detailed Solutions Review -->
+            <div class="glass-panel rounded-2xl p-6 md:p-8 space-y-6 shadow-xl">
+                <div class="flex items-center justify-between border-b border-slate-200 pb-4">
+                    <div>
+                        <h3 class="text-xl font-bold text-slate-800">Differentiated Answer Key & Solutions</h3>
+                        <p class="text-xs text-slate-500">Review solutions tailored by difficulty tier.</p>
+                    </div>
+                    <button onclick="restartQuiz()" class="px-4 py-2 rounded-xl bg-sky-50 border border-sky-300 text-sky-700 hover:bg-sky-100 text-xs font-mono transition">
+                        <i class="fa-solid fa-rotate-right mr-1"></i> Retake Quiz
+                    </button>
+                </div>
+
+                <div id="solutionsList" class="space-y-4"></div>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- FOOTER -->
+    <footer class="relative z-10 glass-panel border-t border-slate-200 py-4 px-6 text-center text-xs text-slate-500 font-mono flex flex-col sm:flex-row justify-between items-center gap-2">
+        <span>AI Math Differentiator &copy; Topic 8 Assignment</span>
+        <button onclick="toggleDeployModal()" class="text-sky-600 hover:underline">
+            <i class="fa-solid fa-book-bookmark mr-1"></i> View Deployment & Report Instructions
+        </button>
+    </footer>
+
+    <!-- OVERLAY 1: INTERACTIVE SCRATCHPAD CANVAS -->
+    <div id="scratchpadModal" class="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm hidden flex flex-col">
+        <div class="p-4 border-b border-slate-200 flex items-center justify-between bg-white">
+            <div class="flex items-center space-x-3">
+                <i class="fa-solid fa-pen-ruler text-sky-600"></i>
+                <h3 class="text-sm font-bold font-mono text-slate-800">Digital Math Scratchpad</h3>
+            </div>
+            
+            <div class="flex items-center space-x-3">
+                <div class="flex items-center space-x-1">
+                    <button onclick="setPenColor('#0284c7')" class="w-6 h-6 rounded-full bg-sky-600 border border-slate-300"></button>
+                    <button onclick="setPenColor('#f59e0b')" class="w-6 h-6 rounded-full bg-amber-500 border border-slate-300"></button>
+                    <button onclick="setPenColor('#ef4444')" class="w-6 h-6 rounded-full bg-red-500 border border-slate-300"></button>
+                    <button onclick="setPenColor('#0f172a')" class="w-6 h-6 rounded-full bg-slate-900 border border-slate-300"></button>
+                </div>
+                
+                <button onclick="clearScratchpad()" class="px-3 py-1 rounded bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-mono border border-slate-300">
+                    Clear
+                </button>
+                <button onclick="toggleScratchpad()" class="px-3 py-1 rounded bg-sky-600 text-white text-xs font-mono font-bold hover:bg-sky-700">
+                    Close
+                </button>
+            </div>
+        </div>
+        <div class="flex-grow relative bg-white">
+            <canvas id="scratchpadCanvas" class="w-full h-full absolute inset-0"></canvas>
+        </div>
+    </div>
+
+    <!-- OVERLAY 2: DEPLOYMENT & ASSIGNMENT INSTRUCTION MODAL -->
+    <div id="deployModal" class="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm hidden flex items-center justify-center p-4">
+        <div class="glass-panel max-w-2xl w-full rounded-2xl p-6 max-h-[85vh] overflow-y-auto space-y-6 shadow-2xl text-left">
+            <div class="flex items-center justify-between border-b border-slate-200 pb-4">
+                <h3 class="text-lg font-bold text-slate-800 flex items-center space-x-2">
+                    <i class="fa-solid fa-cloud-arrow-up text-sky-600"></i>
+                    <span>Submission & Deployment Guide</span>
+                </h3>
+                <button onclick="toggleDeployModal()" class="text-slate-400 hover:text-slate-700">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+
+            <div class="space-y-4 text-xs font-mono text-slate-700">
+                <div class="glass-card p-4 rounded-xl space-y-2">
+                    <div class="text-sky-700 font-bold text-sm">Step 1: Save code as `index.html`</div>
+                    <p>Save all the code provided in this file as a single file named <code class="bg-slate-100 px-1 rounded text-red-600">index.html</code> on your computer.</p>
+                </div>
+
+                <div class="glass-card p-4 rounded-xl space-y-2">
+                    <div class="text-amber-700 font-bold text-sm">Step 2: Get a Live Web URL (Netlify / GitHub Pages)</div>
+                    <ul class="list-disc list-inside space-y-1">
+                        <li><strong>Option A (Fastest - Netlify Drop):</strong> Go to <a href="https://app.netlify.com/drop" target="_blank" class="text-sky-600 underline">netlify.com/drop</a>, drag and drop the folder containing your <code class="bg-slate-100 px-1 rounded">index.html</code>. Netlify gives you a live link in seconds!</li>
+                        <li><strong>Option B (GitHub Pages):</strong> Upload <code class="bg-slate-100 px-1 rounded">index.html</code> to a new GitHub repository and turn on GitHub Pages in Repository Settings.</li>
+                    </ul>
+                </div>
+
+                <div class="glass-card p-4 rounded-xl space-y-2">
+                    <div class="text-emerald-700 font-bold text-sm">Step 3: Submit Assignment Items</div>
+                    <p>1. <strong>Live URL:</strong> Link from Netlify or GitHub Pages.</p>
+                    <p>2. <strong>Source Code Link:</strong> Public GitHub repository link containing your code.</p>
+                    <p>3. <strong>1-Page Report:</strong> Document outlining your AI prompts and differentiation tiers (Foundation, Standard, Advanced).</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- JAVASCRIPT LOGIC -->
+    <script>
+        /* -------------------------------------------------------------------------- */
+        /* 1. DERIVATIVES DIFFERENTIATED DATASET (3 TIERS | 15 POINTS TOTAL)           */
+        /* -------------------------------------------------------------------------- */
+        const quizData = [
+            // LEVEL 1: FOUNDATION (3 questions x 1.0 Point = 3.0 Points)
+            {
+                id: 1,
+                difficulty: "Level 1: Foundation",
+                points: 1.0,
+                category: "Power Rule",
+                hint: "Bring the power down to the front as a multiplier, then subtract 1 from the exponent.",
+                question: "Find the derivative of $f(x) = 4x^3 - 5x^2 + 7x - 9$.",
+                options: [
+                    "$f'(x) = 12x^2 - 10x + 7$",
+                    "$f'(x) = 12x^2 - 10x$",
+                    "$f'(x) = 4x^2 - 5x + 7$",
+                    "$f'(x) = 12x^3 - 10x^2 + 7$"
+                ],
+                correct: 0,
+                explanation: "<strong>Foundation Breakdown:</strong><br>Using power rule $\\frac{d}{dx}[x^n] = n x^{n-1}$ on each term:<br>• $\\frac{d}{dx}(4x^3) = 4 \\cdot 3x^2 = 12x^2$<br>• $\\frac{d}{dx}(-5x^2) = -5 \\cdot 2x = -10x$<br>• $\\frac{d}{dx}(7x) = 7$<br>• Constant term $-9 \\to 0$<br>Result: $f'(x) = 12x^2 - 10x + 7$."
+            },
+            {
+                id: 2,
+                difficulty: "Level 1: Foundation",
+                points: 1.0,
+                category: "Trigonometric Derivatives",
+                hint: "Remember the basic trig rules: $(\\sin x)' = \\cos x$ and $(\\cos x)' = -\\sin x$.",
+                question: "What is the derivative of $y = 3\\sin(x) + 2\\cos(x)$?",
+                options: [
+                    "$y' = 3\\cos(x) - 2\\sin(x)$",
+                    "$y' = 3\\cos(x) + 2\\sin(x)$",
+                    "$y' = -3\\cos(x) + 2\\sin(x)$",
+                    "$y' = 3\\sin(x) - 2\\cos(x)$"
+                ],
+                correct: 0,
+                explanation: "<strong>Foundation Breakdown:</strong><br>1. $\\frac{d}{dx}[3\\sin x] = 3\\cos x$<br>2. $\\frac{d}{dx}[2\\cos x] = 2(-\\sin x) = -2\\sin x$<br>Combine terms: $y' = 3\\cos(x) - 2\\sin(x)$."
+            },
+            {
+                id: 3,
+                difficulty: "Level 1: Foundation",
+                points: 1.0,
+                category: "Exponential & Radical",
+                hint: "Rewrite $\\frac{1}{x}$ as $x^{-1}$ before differentiating with power rule.",
+                question: "Find the derivative of $g(x) = 5e^x + \\frac{1}{x}$.",
+                options: [
+                    "$g'(x) = 5e^x - \\frac{1}{x^2}$",
+                    "$g'(x) = 5e^x + \\frac{1}{x^2}$",
+                    "$g'(x) = e^x - \\ln(x)$",
+                    "$g'(x) = 5e^x - \\frac{1}{x}$"
+                ],
+                correct: 0,
+                explanation: "<strong>Foundation Breakdown:</strong><br>• Derivative of $5e^x$ stays $5e^x$.<br>• Rewrite $\\frac{1}{x} = x^{-1}$. Derivative is $-1x^{-2} = -\\frac{1}{x^2}$.<br>Result: $g'(x) = 5e^x - \\frac{1}{x^2}$."
+            },
+
+            // LEVEL 2: STANDARD (4 questions x 1.5 Points = 6.0 Points)
+            {
+                id: 4,
+                difficulty: "Level 2: Standard",
+                points: 1.5,
+                category: "Product Rule",
+                hint: "Use Product Rule $(u \\cdot v)' = u'v + uv'$.",
+                question: "Find the derivative of $h(x) = x^2 \\cdot \\sin(x)$.",
+                options: [
+                    "$h'(x) = 2x\\sin(x) + x^2\\cos(x)$",
+                    "$h'(x) = 2x\\cos(x)$",
+                    "$h'(x) = x^2\\cos(x) - 2x\\sin(x)$",
+                    "$h'(x) = 2x\\sin(x) - x^2\\cos(x)$"
+                ],
+                correct: 0,
+                explanation: "<strong>Standard Curriculum Method:</strong><br>Let $u = x^2 \\implies u' = 2x$ and $v = \\sin(x) \\implies v' = \\cos(x)$.<br>Apply formula: $u'v + uv' = (2x)(\\sin x) + (x^2)(\\cos x) = 2x\\sin(x) + x^2\\cos(x)$."
+            },
+            {
+                id: 5,
+                difficulty: "Level 2: Standard",
+                points: 1.5,
+                category: "Quotient Rule",
+                hint: "Use Quotient Rule: $\\frac{u'v - uv'}{v^2}$.",
+                question: "Find the derivative of $y = \\frac{e^x}{x + 1}$.",
+                options: [
+                    "$y' = \\frac{x e^x}{(x+1)^2}$",
+                    "$y' = \\frac{e^x}{(x+1)^2}$",
+                    "$y' = \\frac{(x+2)e^x}{(x+1)^2}$",
+                    "$y' = \\frac{e^x}{1}$"
+                ],
+                correct: 0,
+                explanation: "<strong>Standard Curriculum Method:</strong><br>Let $u = e^x \\implies u'=e^x$ and $v = x+1 \\implies v'=1$.<br>$\\frac{u'v - uv'}{v^2} = \\frac{e^x(x+1) - e^x(1)}{(x+1)^2} = \\frac{x e^x + e^x - e^x}{(x+1)^2} = \\frac{x e^x}{(x+1)^2}$."
+            },
+            {
+                id: 6,
+                difficulty: "Level 2: Standard",
+                points: 1.5,
+                category: "Chain Rule",
+                hint: "Outer derivative times inner derivative: $n u^{n-1} \\cdot u'$.",
+                question: "Find the derivative of $f(x) = (3x^2 - 5)^4$.",
+                options: [
+                    "$f'(x) = 24x(3x^2 - 5)^3$",
+                    "$f'(x) = 4(3x^2 - 5)^3$",
+                    "$f'(x) = 12x(3x^2 - 5)^3$",
+                    "$f'(x) = 24x(3x^2 - 5)^4$"
+                ],
+                correct: 0,
+                explanation: "<strong>Standard Curriculum Method:</strong><br>Outer derivative: $4(3x^2 - 5)^3$.<br>Inner derivative of $(3x^2 - 5)$ is $6x$.<br>Multiply: $4(3x^2 - 5)^3 \\cdot 6x = 24x(3x^2 - 5)^3$."
+            },
+            {
+                id: 7,
+                difficulty: "Level 2: Standard",
+                points: 1.5,
+                category: "Natural Logarithms",
+                hint: "Formula: $\\frac{d}{dx}[\\ln(u)] = \\frac{u'}{u}$.",
+                question: "Find the derivative of $y = \\ln(x^3 + 2x)$.",
+                options: [
+                    "$y' = \\frac{3x^2 + 2}{x^3 + 2x}$",
+                    "$y' = \\frac{1}{x^3 + 2x}$",
+                    "$y' = \\frac{3x^2}{x^3 + 2x}$",
+                    "$y' = (3x^2+2)\\ln(x^3+2x)$"
+                ],
+                correct: 0,
+                explanation: "<strong>Standard Curriculum Method:</strong><br>Here $u = x^3 + 2x$, so derivative $u' = 3x^2 + 2$.<br>Using $\\frac{u'}{u} \\implies y' = \\frac{3x^2 + 2}{x^3 + 2x}$."
+            },
+
+            // LEVEL 3: ADVANCED (3 questions x 2.0 Points = 6.0 Points)
+            {
+                id: 8,
+                difficulty: "Level 3: Advanced",
+                points: 2.0,
+                category: "Implicit Differentiation",
+                hint: "Differentiate both sides with respect to $x$. Remember $\\frac{d}{dx}(y^2) = 2y \\frac{dy}{dx}$.",
+                question: "Find $\\frac{dy}{dx}$ for the implicit curve $x^2 + y^2 = 25$.",
+                options: [
+                    "$\\frac{dy}{dx} = -\\frac{x}{y}$",
+                    "$\\frac{dy}{dx} = -\\frac{y}{x}$",
+                    "$\\frac{dy}{dx} = \\frac{x}{y}$",
+                    "$\\frac{dy}{dx} = -2x$"
+                ],
+                correct: 0,
+                explanation: "<strong>Advanced Extension:</strong><br>Implicit differentiation yields: $2x + 2y \\frac{dy}{dx} = 0$.<br>Isolate term: $2y \\frac{dy}{dx} = -2x \\implies \\frac{dy}{dx} = -\\frac{2x}{2y} = -\\frac{x}{y}$."
+            },
+            {
+                id: 9,
+                difficulty: "Level 3: Advanced",
+                points: 2.0,
+                category: "Combined Chain & Trig",
+                hint: "Apply double Chain Rule: Power rule outer, trig inner, linear argument innermost.",
+                question: "Find the derivative of $f(x) = \\sin^3(4x)$.",
+                options: [
+                    "$f'(x) = 12\\sin^2(4x)\\cos(4x)$",
+                    "$f'(x) = 3\\sin^2(4x)\\cos(4x)$",
+                    "$f'(x) = 12\\sin^2(4x)$",
+                    "$f'(x) = 4\\cos^3(4x)$"
+                ],
+                correct: 0,
+                explanation: "<strong>Advanced Extension:</strong><br>Rewrite as $[\\sin(4x)]^3$.<br>Step 1 (Power): $3\\sin^2(4x)$.<br>Step 2 (Trig): $\\cos(4x)$.<br>Step 3 (Linear): $4$.<br>Multiply together: $3 \\cdot 4 \\cdot \\sin^2(4x)\\cos(4x) = 12\\sin^2(4x)\\cos(4x)$."
+            },
+            {
+                id: 10,
+                difficulty: "Level 3: Advanced",
+                points: 2.0,
+                category: "Higher-Order Derivatives",
+                hint: "Take first derivative $f'(x)$ using product rule, then differentiate again for $f''(x)$.",
+                question: "Find the second derivative $f''(x)$ of $f(x) = x \\cdot e^{2x}$.",
+                options: [
+                    "$f''(x) = (4x + 4)e^{2x}$",
+                    "$f''(x) = (4x + 2)e^{2x}$",
+                    "$f''(x) = 4e^{2x}$",
+                    "$f''(x) = (2x + 1)e^{2x}$"
+                ],
+                correct: 0,
+                explanation: "<strong>Advanced Extension:</strong><br>First derivative: $f'(x) = e^{2x} + 2x e^{2x} = e^{2x}(1+2x)$.<br>Second derivative: $f''(x) = 2e^{2x}(1+2x) + e^{2x}(2) = e^{2x}(2 + 4x + 2) = (4x+4)e^{2x}$."
+            }
+        ];
+
+        /* -------------------------------------------------------------------------- */
+        /* 2. STATE MANAGEMENT & TIMERS                                               */
+        /* -------------------------------------------------------------------------- */
+        let currentQuestionIndex = 0;
+        let userSelections = new Array(quizData.length).fill(-1);
+        let timerInterval = null;
+        const TOTAL_QUIZ_TIME_SECONDS = 25 * 60;
+        let timeRemaining = TOTAL_QUIZ_TIME_SECONDS;
+        let soundEnabled = true;
+
+        /* -------------------------------------------------------------------------- */
+        /* 3. AUDIO SYSTEM                                                            */
+        /* -------------------------------------------------------------------------- */
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+        function playTone(freq, type, duration) {
+            if (!soundEnabled) return;
+            try {
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.type = type;
+                osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+                gain.gain.setValueAtTime(0.08, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                osc.start();
+                osc.stop(audioCtx.currentTime + duration);
+            } catch(e) {}
+        }
+
+        function playSound(type) {
+            if (!soundEnabled) return;
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+            if (type === 'click') playTone(600, 'sine', 0.04);
+            if (type === 'correct') playTone(880, 'triangle', 0.12);
+            if (type === 'incorrect') playTone(220, 'sawtooth', 0.18);
+            if (type === 'finish') {
+                playTone(523.25, 'sine', 0.1);
+                setTimeout(() => playTone(659.25, 'sine', 0.15), 100);
+                setTimeout(() => playTone(783.99, 'sine', 0.25), 200);
+            }
+        }
+
+        function toggleSound() {
+            soundEnabled = !soundEnabled;
+            const icon = document.getElementById('soundIcon');
+            icon.className = soundEnabled ? "fa-solid fa-volume-high text-sky-600" : "fa-solid fa-volume-xmark text-slate-400";
+        }
+
+        /* -------------------------------------------------------------------------- */
+        /* 4. QUIZ ENGINE & GREEN/RED INTERACTIVE EVALUATION                          */
+        /* -------------------------------------------------------------------------- */
+        function startQuiz() {
+            playSound('click');
+            currentQuestionIndex = 0;
+            userSelections.fill(-1);
+            timeRemaining = TOTAL_QUIZ_TIME_SECONDS;
+
+            document.getElementById('startScreen').classList.add('hidden');
+            document.getElementById('resultScreen').classList.add('hidden');
+            document.getElementById('quizScreen').classList.remove('hidden');
+
+            renderNavGrid();
+            loadQuestion();
+            startGlobalTimer();
+        }
+
+        function renderNavGrid() {
+            const navGrid = document.getElementById('navGrid');
+            navGrid.innerHTML = '';
+
+            quizData.forEach((q, idx) => {
+                const btn = document.createElement('button');
+                btn.id = `nav-btn-${idx}`;
+                btn.onclick = () => jumpToQuestion(idx);
+                
+                let btnStyle = 'bg-white text-slate-600 border-slate-300 hover:bg-slate-100';
+                if (userSelections[idx] !== -1) {
+                    if (userSelections[idx] === q.correct) {
+                        btnStyle = 'bg-emerald-100 text-emerald-800 border-emerald-400 font-bold';
+                    } else {
+                        btnStyle = 'bg-red-100 text-red-800 border-red-400 font-bold';
+                    }
+                }
+                if (idx === currentQuestionIndex) {
+                    btnStyle += ' ring-2 ring-sky-500 ring-offset-1';
+                }
+
+                btn.className = `w-8 h-8 rounded-lg font-mono text-xs border transition ${btnStyle}`;
+                btn.textContent = idx + 1;
+                navGrid.appendChild(btn);
+            });
+        }
+
+        function jumpToQuestion(idx) {
+            playSound('click');
+            currentQuestionIndex = idx;
+            loadQuestion();
+        }
+
+        function toggleHint() {
+            const hintBox = document.getElementById('hintBox');
+            hintBox.classList.toggle('hidden');
+        }
+
+        function loadQuestion() {
+            const q = quizData[currentQuestionIndex];
+            const hasAnswered = userSelections[currentQuestionIndex] !== -1;
+
+            document.getElementById('questionNumBadge').textContent = `Q ${currentQuestionIndex + 1} / ${quizData.length}`;
+            
+            const diffBadge = document.getElementById('difficultyBadge');
+            diffBadge.textContent = `${q.difficulty} (${q.points} ${q.points === 1 ? 'Pt' : 'Pts'})`;
+            
+            if (q.difficulty.includes('Foundation')) {
+                diffBadge.className = "font-mono text-xs font-bold px-3 py-1 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300";
+            } else if (q.difficulty.includes('Standard')) {
+                diffBadge.className = "font-mono text-xs font-bold px-3 py-1 rounded-full bg-sky-100 text-sky-800 border border-sky-300";
+            } else {
+                diffBadge.className = "font-mono text-xs font-bold px-3 py-1 rounded-full bg-purple-100 text-purple-800 border border-purple-300";
+            }
+
+            document.getElementById('topicCategory').textContent = `Category: ${q.category}`;
+            document.getElementById('questionContainer').innerHTML = q.question;
+            document.getElementById('hintText').textContent = q.hint;
+            document.getElementById('hintBox').classList.add('hidden');
+
+            // Options Rendering with GREEN/RED dynamic states
+            const grid = document.getElementById('optionsGrid');
+            grid.innerHTML = '';
+
+            q.options.forEach((opt, idx) => {
+                const btn = document.createElement('button');
+                let colorClasses = "border-slate-200 hover:border-sky-300 bg-white text-slate-800";
+
+                if (hasAnswered) {
+                    if (idx === q.correct) {
+                        colorClasses = "option-correct font-bold";
+                    } else if (idx === userSelections[currentQuestionIndex]) {
+                        colorClasses = "option-incorrect font-bold";
+                    } else {
+                        colorClasses = "border-slate-200 opacity-60 bg-slate-50";
+                    }
+                }
+
+                btn.className = `option-btn w-full p-4 rounded-xl glass-card text-left text-base flex items-center space-x-3 border ${colorClasses} font-mono`;
+                btn.onclick = () => selectOption(idx);
+                btn.disabled = hasAnswered; // Lock options once selected
+
+                btn.innerHTML = `
+                    <span class="w-7 h-7 rounded-lg bg-slate-100 text-slate-700 flex items-center justify-center text-xs font-bold font-sans border border-slate-300">${String.fromCharCode(65 + idx)}</span>
+                    <span class="flex-grow">${opt}</span>
+                `;
+                grid.appendChild(btn);
+            });
+
+            // AI Explanation Visibility
+            const aiBox = document.getElementById('aiExplanationBox');
+            const aiChat = document.getElementById('aiChatContainer');
+            if (hasAnswered) {
+                aiBox.classList.remove('hidden');
+                aiChat.classList.remove('hidden');
+                document.getElementById('aiExplanationText').innerHTML = q.explanation;
+            } else {
+                aiBox.classList.add('hidden');
+                aiChat.classList.add('hidden');
+            }
+
+            document.getElementById('prevBtn').style.visibility = currentQuestionIndex === 0 ? 'hidden' : 'visible';
+            document.getElementById('nextBtnText').textContent = currentQuestionIndex === quizData.length - 1 ? "Review / Finish" : "Next Question";
+
+            renderNavGrid();
+
+            if (window.MathJax) {
+                MathJax.typesetPromise();
+            }
+        }
+
+        function selectOption(idx) {
+            if (userSelections[currentQuestionIndex] !== -1) return; // Prevent re-selection
+            userSelections[currentQuestionIndex] = idx;
+            const q = quizData[currentQuestionIndex];
+
+            if (idx === q.correct) {
+                playSound('correct');
+            } else {
+                playSound('incorrect');
+            }
+
+            loadQuestion();
+            triggerAiExplanation(q, idx);
+        }
+
+        /* -------------------------------------------------------------------------- */
+        /* 5. AI EXPLANATION & GEMINI API CHAT INTEGRATION                           */
+        /* -------------------------------------------------------------------------- */
+        async function triggerAiExplanation(q, userChoice) {
+            const apiKey = document.getElementById('userApiKey').value.trim();
+            const statusBadge = document.getElementById('aiStatusBadge');
+            
+            if (!apiKey) {
+                statusBadge.textContent = "AI engine active";
+                return;
+            }
+
+            statusBadge.textContent = "Querying Gemini API...";
+            try {
+                const prompt = `Explain in 2 simple sentences why the derivative answer to "${q.question}" is ${q.options[q.correct]}. User selected: ${q.options[userChoice]}.`;
+                const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${apiKey}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
+                });
+                const data = await response.json();
+                const aiText = data.candidates?.[0]?.content?.parts?.[0]?.text;
+                if (aiText) {
+                    document.getElementById('aiExplanationText').innerHTML = `<strong>Live Gemini AI Analysis:</strong> ${aiText}`;
+                    statusBadge.textContent = "Live Gemini AI Response";
+                }
+            } catch (err) {
+                statusBadge.textContent = "Built-in AI Fallback Active";
+            }
+        }
+
+        async function sendAiChatQuery() {
+            const input = document.getElementById('userChatInput');
+            const chatHistory = document.getElementById('chatHistory');
+            const userMsg = input.value.trim();
+            if (!userMsg) return;
+
+            const q = quizData[currentQuestionIndex];
+            chatHistory.innerHTML += `<div class="text-sky-800 font-bold">You: ${userMsg}</div>`;
+            input.value = '';
+
+            const apiKey = document.getElementById('userApiKey').value.trim();
+            if (apiKey) {
+                try {
+                    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${apiKey}`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            contents: [{ parts: [{ text: `Regarding calculus question: ${q.question}. Student asks: ${userMsg}` }] }]
+                        })
+                    });
+                    const data = await response.json();
+                    const reply = data.candidates?.[0]?.content?.parts?.[0]?.text || "AI tutor is reviewing your query.";
+                    chatHistory.innerHTML += `<div class="text-amber-800 font-medium">AI Tutor: ${reply}</div>`;
+                } catch(e) {
+                    chatHistory.innerHTML += `<div class="text-amber-800 font-medium">AI Tutor: To solve this, review the formula: $\\frac{d}{dx}[x^n] = n x^{n-1}$. Let me know if you need another step!</div>`;
+                }
+            } else {
+                chatHistory.innerHTML += `<div class="text-amber-800 font-medium">AI Tutor: Great question! In this problem, apply the power/chain rule step by step. Feel free to use the scratchpad to calculate!</div>`;
+            }
+
+            chatHistory.scrollTop = chatHistory.scrollHeight;
+            if (window.MathJax) MathJax.typesetPromise();
+        }
+
+        function prevQuestion() {
+            if (currentQuestionIndex > 0) {
+                currentQuestionIndex--;
+                loadQuestion();
+            }
+        }
+
+        function nextQuestion() {
+            if (currentQuestionIndex < quizData.length - 1) {
+                currentQuestionIndex++;
+                loadQuestion();
+            } else {
+                finishQuiz();
+            }
+        }
+
+        /* -------------------------------------------------------------------------- */
+        /* 6. GLOBAL 25-MINUTE TIMER LOGIC                                           */
+        /* -------------------------------------------------------------------------- */
+        function startGlobalTimer() {
+            clearInterval(timerInterval);
+            updateTimerDisplay();
+
+            timerInterval = setInterval(() => {
+                timeRemaining--;
+                updateTimerDisplay();
+
+                if (timeRemaining <= 0) {
+                    clearInterval(timerInterval);
+                    finishQuiz();
+                }
+            }, 1000);
+        }
+
+        function updateTimerDisplay() {
+            const minutes = Math.floor(timeRemaining / 60);
+            const seconds = timeRemaining % 60;
+            const displayStr = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+            
+            const timerText = document.getElementById('timerText');
+            const timerBar = document.getElementById('timerBar');
+            
+            timerText.textContent = displayStr;
+            const pct = (timeRemaining / TOTAL_QUIZ_TIME_SECONDS) * 100;
+            timerBar.style.width = `${pct}%`;
+
+            if (timeRemaining < 300) {
+                timerText.className = "font-mono text-sm font-bold text-red-600 animate-pulse w-16 text-right";
+                timerBar.className = "bg-red-500 h-3 rounded-full transition-all duration-1000 w-full";
+            } else {
+                timerText.className = "font-mono text-sm font-bold text-slate-700 w-16 text-right";
+                timerBar.className = "bg-gradient-to-r from-sky-500 to-amber-500 h-3 rounded-full transition-all duration-1000 w-full";
+            }
+        }
+
+        /* -------------------------------------------------------------------------- */
+        /* 7. EVALUATION & RESULTS BREAKDOWN                                          */
+        /* -------------------------------------------------------------------------- */
+        function finishQuiz() {
+            clearInterval(timerInterval);
+            playSound('finish');
+
+            document.getElementById('quizScreen').classList.add('hidden');
+            document.getElementById('resultScreen').classList.remove('hidden');
+
+            let totalPointsEarned = 0;
+            quizData.forEach((q, idx) => {
+                if (userSelections[idx] === q.correct) {
+                    totalPointsEarned += q.points;
+                }
+            });
+
+            const accuracy = Math.round((totalPointsEarned / 15.0) * 100);
+            const timeSpentSeconds = TOTAL_QUIZ_TIME_SECONDS - timeRemaining;
+            const spentMins = Math.floor(timeSpentSeconds / 60);
+            const spentSecs = timeSpentSeconds % 60;
+
+            document.getElementById('finalScoreText').textContent = `${totalPointsEarned.toFixed(1)} / 15.0`;
+            document.getElementById('accuracyPercent').textContent = `${accuracy}%`;
+            document.getElementById('totalTimeText').textContent = `${spentMins}:${spentSecs.toString().padStart(2, '0')}`;
+
+            document.getElementById('scoreCirclePath').setAttribute('stroke-dasharray', `${accuracy}, 100`);
+
+            const rankBadge = document.getElementById('rankBadge');
+            if (totalPointsEarned >= 13.5) {
+                rankBadge.textContent = "Derivatives Master (Grade A+)";
+                rankBadge.className = "inline-block px-4 py-1.5 rounded-full bg-emerald-100 border border-emerald-300 text-emerald-800 font-mono text-xs uppercase tracking-widest font-bold";
+            } else if (totalPointsEarned >= 10.0) {
+                rankBadge.textContent = "Calculus Proficient (Grade B)";
+                rankBadge.className = "inline-block px-4 py-1.5 rounded-full bg-sky-100 border border-sky-300 text-sky-800 font-mono text-xs uppercase tracking-widest font-bold";
+            } else {
+                rankBadge.textContent = "Needs Derivatives Review";
+                rankBadge.className = "inline-block px-4 py-1.5 rounded-full bg-amber-100 border border-amber-300 text-amber-800 font-mono text-xs uppercase tracking-widest font-bold";
+            }
+
+            // Populate Breakdown Answer Key
+            const solutionsList = document.getElementById('solutionsList');
+            solutionsList.innerHTML = '';
+
+            quizData.forEach((q, idx) => {
+                const userChoice = userSelections[idx];
+                const isCorrect = userChoice === q.correct;
+                const userSelectedText = userChoice !== -1 ? q.options[userChoice] : "Unanswered";
+
+                const item = document.createElement('div');
+                item.className = `glass-card p-5 rounded-xl border-l-4 ${isCorrect ? 'border-l-emerald-500' : 'border-l-red-500'} space-y-3`;
+
+                item.innerHTML = `
+                    <div class="flex items-center justify-between text-xs font-mono">
+                        <span class="text-slate-500">Q${idx + 1} • ${q.difficulty} (${q.points} pt)</span>
+                        <span class="${isCorrect ? 'text-emerald-600' : 'text-red-500'} font-bold">
+                            ${isCorrect ? '<i class="fa-solid fa-check mr-1"></i> Correct (+' + q.points + ' pt)' : '<i class="fa-solid fa-xmark mr-1"></i> Incorrect (0 pt)'}
+                        </span>
+                    </div>
+                    <div class="text-base text-slate-800 font-medium">${q.question}</div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-2 text-xs font-mono pt-1">
+                        <div class="p-2.5 rounded bg-slate-50 text-slate-700 border border-slate-200">
+                            <span class="text-slate-400 block">Your Choice:</span>
+                            <span class="${isCorrect ? 'text-emerald-600 font-semibold' : 'text-red-500 font-semibold'}">${userSelectedText}</span>
+                        </div>
+                        <div class="p-2.5 rounded bg-slate-50 text-slate-700 border border-slate-200">
+                            <span class="text-slate-400 block">Correct Solution:</span>
+                            <span class="text-emerald-600 font-semibold">${q.options[q.correct]}</span>
+                        </div>
+                    </div>
+                    <div class="p-3.5 rounded-lg bg-sky-50/60 border border-sky-100 text-xs text-slate-700 space-y-1">
+                        <span class="text-sky-800 font-bold font-mono block"><i class="fa-solid fa-lightbulb mr-1"></i> Step-by-Step AI Breakdown:</span>
+                        <div class="leading-relaxed mt-1">${q.explanation}</div>
+                    </div>
+                `;
+                solutionsList.appendChild(item);
+            });
+
+            if (window.MathJax) MathJax.typesetPromise();
+        }
+
+        function restartQuiz() { startQuiz(); }
+
+        /* -------------------------------------------------------------------------- */
+        /* 8. SCRATCHPAD CANVAS & MODALS                                             */
+        /* -------------------------------------------------------------------------- */
+        const bgCanvas = document.getElementById('bgParticles');
+        const bgCtx = bgCanvas.getContext('2d');
+        let particles = [];
+
+        function resizeBgCanvas() {
+            bgCanvas.width = window.innerWidth;
+            bgCanvas.height = window.innerHeight;
+        }
+        window.addEventListener('resize', resizeBgCanvas);
+        resizeBgCanvas();
+
+        class MathParticle {
+            constructor() {
+                this.symbols = ["f'(x)", "dy/dx", "d/dx", "lim", "e^x", "ln(x)", "sin(x)", "cos(x)"];
+                this.reset();
+            }
+            reset() {
+                this.x = Math.random() * bgCanvas.width;
+                this.y = Math.random() * bgCanvas.height;
+                this.symbol = this.symbols[Math.floor(Math.random() * this.symbols.length)];
+                this.size = Math.random() * 14 + 10;
+                this.speedY = -(Math.random() * 0.4 + 0.1);
+                this.opacity = Math.random() * 0.3 + 0.1;
+            }
+            update() {
+                this.y += this.speedY;
+                if (this.y < -20) this.reset();
+            }
+            draw() {
+                bgCtx.fillStyle = `rgba(2, 132, 199, ${this.opacity})`;
+                bgCtx.font = `${this.size}px monospace`;
+                bgCtx.fillText(this.symbol, this.x, this.y);
+            }
+        }
+
+        for (let i = 0; i < 25; i++) particles.push(new MathParticle());
+
+        function animateBg() {
+            bgCtx.clearRect(0, 0, bgCanvas.width, bgCanvas.height);
+            particles.forEach(p => { p.update(); p.draw(); });
+            requestAnimationFrame(animateBg);
+        }
+        animateBg();
+
+        const scratchCanvas = document.getElementById('scratchpadCanvas');
+        const scratchCtx = scratchCanvas.getContext('2d');
+        let isDrawing = false;
+        let penColor = '#0284c7';
+
+        function resizeScratchpad() {
+            const rect = scratchCanvas.parentElement.getBoundingClientRect();
+            scratchCanvas.width = rect.width;
+            scratchCanvas.height = rect.height;
+        }
+
+        function toggleScratchpad() {
+            playSound('click');
+            const modal = document.getElementById('scratchpadModal');
+            modal.classList.toggle('hidden');
+            if (!modal.classList.contains('hidden')) resizeScratchpad();
+        }
+
+        function toggleDeployModal() {
+            playSound('click');
+            document.getElementById('deployModal').classList.toggle('hidden');
+        }
+
+        function setPenColor(color) { penColor = color; }
+
+        function clearScratchpad() {
+            scratchCtx.clearRect(0, 0, scratchCanvas.width, scratchCanvas.height);
+        }
+
+        function startDraw(e) {
+            isDrawing = true;
+            scratchCtx.beginPath();
+            const rect = scratchCanvas.getBoundingClientRect();
+            const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+            const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+            scratchCtx.moveTo(clientX - rect.left, clientY - rect.top);
+        }
+
+        function draw(e) {
+            if (!isDrawing) return;
+            const rect = scratchCanvas.getBoundingClientRect();
+            const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+            const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+            scratchCtx.strokeStyle = penColor;
+            scratchCtx.lineWidth = 2.5;
+            scratchCtx.lineCap = 'round';
+            scratchCtx.lineTo(clientX - rect.left, clientY - rect.top);
+            scratchCtx.stroke();
+        }
+
+        function stopDraw() { isDrawing = false; }
+
+        scratchCanvas.addEventListener('mousedown', startDraw);
+        scratchCanvas.addEventListener('mousemove', draw);
+        scratchCanvas.addEventListener('mouseup', stopDraw);
+        scratchCanvas.addEventListener('touchstart', startDraw);
+        scratchCanvas.addEventListener('touchmove', draw);
+        scratchCanvas.addEventListener('touchend', stopDraw);
+    </script>
+</body>
+</html>
